@@ -1,28 +1,62 @@
 import numpy as np
-A=np.array([[20,6,2],[16,3,6],[27,6,2],[19,1,2],[24,4,2],[22,1,5],[15,4,2],[18,4,2],[21,1,4],[16,2,4]])
-C=np.array([[386],[289],[393],[110],[280],[167],[271],[274],[148],[192]])
-print(A,C)
-print(A.shape,C.shape)  
-import openpyxl
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
 
-file_path = "C:\\Users\\vijay\\Documents\\sem4\\ML\\Lab Session1 Data.xlsx"
-sheet_name = "Purchase data"
+# Read data from an Excel file
+dataset = pd.read_excel(r"C:\Users\vijay\Documents\sem4\ML\Lab Session1 Data.xlsx")
 
-wb = openpyxl.load_workbook(file_path)
-sheet = wb[sheet_name]
-start_row = 2 
-start_col = 2
-end_col = sheet.max_column
+# Display the first few rows of the dataset
+a = dataset.head()
+print(a)
 
-data = []
+# Extract features (candies, mangoes, milk packets) and target variable (payment)
+A = dataset[['Candies (#)','Mangoes (Kg)','Milk Packets (#)']].values
+C = dataset[['Payment (Rs)']].values
 
-for row_idx in range(start_row, sheet.max_row + 1):
-    row_data = []
-    for col_idx in range(start_col, end_col + 1):
-        cell_value = sheet.cell(row=row_idx, column=col_idx).value
-        row_data.append(cell_value)
-    data.append(row_data)
+# Display extracted features and target variable
+print(A)
+print(C)
 
-print("Extracted data:")
-print(data)
+# Get the dimensions of the feature matrix
+rows, cols = A.shape
+print("The Dimensionality of the vector space:", cols)
+print("Number of vectors are:", rows)
 
+# Compute the rank of the feature matrix
+rank = np.linalg.matrix_rank(A)
+print("The rank of matrix A:", rank)
+
+# Compute the pseudo-inverse of A and calculate individual costs using linear regression
+pinv_A = np.linalg.pinv(A)
+X = pinv_A @ C
+print("The individual cost of a candy is: ", round(X[0][0]))
+print("The individual cost of a mango is: ", round(X[1][0]))
+print("The individual cost of a milk packet is: ", round(X[2][0]))
+
+# Define a function for classification using logistic regression
+def classifier(df):
+    # Define features and target variable
+    features = ["Candies (#)", "Mangoes (Kg)", "Milk Packets (#)"]
+    X = df[features]
+    y = df['Category']
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Initialize and train the logistic regression classifier
+    classifier = LogisticRegression()
+    classifier.fit(X_train, y_train)
+    # Predict categories for all data points
+    df['Predicted Category'] = classifier.predict(X)
+    return df
+
+# Load data again into a pandas DataFrame
+df = pd.read_excel(r"C:\Users\vijay\Documents\sem4\ML\Lab Session1 Data.xlsx")
+
+# Create a new column 'Category' based on total payment
+df['Category'] = df['Payment (Rs)'].apply(lambda x: 'RICH' if x > 200 else 'POOR')
+
+# Apply the classifier function to classify customers
+df = classifier(df)
+
+# Display selected columns from the DataFrame
+print(df[['Candies (#)', 'Mangoes (Kg)', 'Milk Packets (#)', 'Payment (Rs)', 'Category', 'Predicted Category']])
